@@ -1,6 +1,6 @@
 # Define your provider (DigitalOcean)
 provider "digitalocean" {
-  token = "YOUR_DO_API_TOKEN"
+  token = file("${path.module}/do_token.txt")
 }
 
 # Define a DigitalOcean SSH key (you should create this key beforehand)
