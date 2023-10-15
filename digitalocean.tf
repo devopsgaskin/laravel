@@ -23,6 +23,56 @@ resource "digitalocean_droplet" "alparslan_vm" {
     private_key = file("~/.ssh/id_rsa")
     host        = self.ipv4_address
   }
+  user_data = <<-EOF
+              #!/bin/bash
+              apt-get update
+              apt-get install -y nginx
+              systemctl enable nginx
+              systemctl start nginx
+
+              # Install PHP and Composer for Laravel
+              apt-get install -y php-fpm php-cli php-mysql composer
+
+              # Clone your Laravel app from a Git repository
+              git clone https://github.com/your-laravel-repo.git /var/www/laravel-app
+              cd /var/www/laravel-app
+              composer install
+
+              # Install Node.js and npm for Angular
+              curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
+              apt-get install -y nodejs
+              npm install -g @angular/cli
+
+              # Clone your Angular app from a Git repository
+              git clone https://github.com/your-angular-repo.git /var/www/angular-app
+              cd /var/www/angular-app
+              npm install
+
+              # Configure Nginx to serve Laravel and Angular apps
+              cat > /etc/nginx/sites-available/laravel-angular <<EOL
+              server {
+                  listen 80;
+                  server_name alparslan.com;
+
+                  location /laravel {
+                      alias /var/www/laravel-app/public;
+                      try_files $uri $uri/ /laravel/index.php?$query_string;
+                  }
+
+                  location /angular {
+                      alias /var/www/angular-app/dist/angular-app;
+                      try_files $uri $uri/ /angular/index.html;
+                  }
+
+                  location / {
+                      root /var/www;
+                  }
+              }
+              EOL
+              ln -s /etc/nginx/sites-available/laravel-angular /etc/nginx/sites-enabled/
+              nginx -t
+              systemctl reload nginx
+              EOF
 }
 
 # Define a DigitalOcean Load Balancer
@@ -33,16 +83,6 @@ resource "digitalocean_loadbalancer" "alparslan_lb" {
   droplet_ids = [digitalocean_droplet.alparslan_vm.id]
 }
 
-# Define the startup script for the VM
-resource "digitalocean_droplet" "alparslan_vm" {
-  user_data = <<-EOF
-              #!/bin/bash
-              apt-get update
-              apt-get install -y nginx
-              systemctl enable nginx
-              systemctl start nginx
-              EOF
-}
 
 # Provision the Load Balancer with SSL certificate
 resource "digitalocean_certificate" "alparslan_certificate" {
